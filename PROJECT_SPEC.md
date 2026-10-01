@@ -7,7 +7,7 @@
 ## 使用角色
 
 - 运行协调员：登记闸门并提交开度调整命令。
-- 安全复核员：提交联锁结论，决定命令是否通过。
+- 安全复核员：提交联锁结论，决定命令是否通过；可在命令尚未开始移动前撤回已通过复核的命令。
 - 闸门操作员：凭执行令牌启动命令并登记执行结果。
 
 ## 核心实体
@@ -34,14 +34,21 @@
 
 闸门操作员通过 `POST /commands/{id}/execute` 提交执行令牌。服务校验命令、令牌、闸门占用关系和目标开度，在临界区内完成 approved、executing、completed 或 aborted 的转换，并同步更新闸门状态。令牌在命令结束后失效，不能复用。
 
+### withdraw-gate-command
+
+安全复核员通过 `POST /commands/{id}/withdraw` 撤回已通过复核但尚未开始移动的命令，需提供 withdrawn_by 和撤回原因。服务在同一临界区内把命令置为 withdrawn、立即清除执行令牌并释放闸门占用（闸门回到 idle、活动命令引用清空）。撤回是单向终态，原令牌立即失效；后续读取命令仍能看到原 clear 联锁结论、撤回人和撤回原因。已经开始移动、尚未通过复核或已经处于终态的命令不能撤回；撤回失败时闸门占用、命令状态和原令牌都保持不变。
+
 ## 状态与规则
 
 - `gate` 状态：idle、reserved、moving、faulted。
-- `gate_command` 状态：pending、approved、rejected、executing、completed、aborted。
+- `gate_command` 状态：pending、approved、rejected、executing、completed、aborted、withdrawn。
 - 只有 pending 命令可以复核。
 - 只有 approved 命令可以执行，且执行令牌必须匹配。
+- 只有 approved（已通过复核、未开始移动、令牌尚未使用）的命令可以撤回。
 - clear 复核与闸门占用必须同时成功；任一步失败时两者都不写入。
 - blocked 复核使命令 rejected，不会占用闸门。
+- 撤回与闸门释放必须同时成功；命令撤回、令牌失效和闸门释放要么全部写入，要么全部不写入。
+- 撤回立即清除执行令牌，撤回后的命令不能执行也不能再次撤回。
 - 模拟故障会令命令 aborted、闸门 faulted，并保留最终开度。
 - 已完成或已中止的命令不能再次执行。
 
@@ -64,6 +71,7 @@
 - `GET /commands/{id}`
 - `POST /commands/{id}/interlock`
 - `POST /commands/{id}/execute`
+- `POST /commands/{id}/withdraw`
 
 错误响应统一为：
 

@@ -91,6 +91,17 @@ func requireStatus(result apiResult, expected int, operation string) error {
 	)
 }
 
+func requireErrorCode(result apiResult, expected string) error {
+	code, err := stringField(result.Body, "code")
+	if err != nil {
+		return err
+	}
+	if code != expected {
+		return fmt.Errorf("expected error code %q, got %q with body %s", expected, code, prettyBody(result.Body))
+	}
+	return nil
+}
+
 func objectField(body map[string]any, name string) (map[string]any, error) {
 	value, exists := body[name]
 	if !exists {

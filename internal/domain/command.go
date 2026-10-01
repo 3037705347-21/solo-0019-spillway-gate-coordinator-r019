@@ -14,6 +14,7 @@ const (
 	CommandExecuting CommandStatus = "executing"
 	CommandCompleted CommandStatus = "completed"
 	CommandAborted   CommandStatus = "aborted"
+	CommandWithdrawn CommandStatus = "withdrawn"
 )
 
 type GateCommand struct {
@@ -27,6 +28,7 @@ type GateCommand struct {
 	Interlock        *InterlockDecision
 	ExecutionToken   string
 	ExecutedBy       string
+	WithdrawnBy      string
 	TerminalReason   string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
@@ -109,6 +111,41 @@ func (c *GateCommand) Review(decision InterlockDecision, token string, now time.
 
 	c.ExecutionToken = ""
 	c.Status = CommandRejected
+	return nil
+}
+
+// Withdraw revokes an approved-but-not-yet-executed command. The execution
+// token is invalidated immediately so it can never be presented again. It is
+// a terminal transition: pending, executing and already-terminal commands
+// cannot be withdrawn.
+func (c *GateCommand) Withdraw(withdrawnBy, reason string, now time.Time) error {
+	if c.Status != CommandApproved {
+		switch c.Status {
+		case CommandPending:
+			return Conflict("command_not_approved", "only approved commands can be withdrawn")
+		case CommandExecuting:
+			return Conflict("command_execution_started", "commands that started moving cannot be withdrawn")
+		default:
+			return Conflict("command_not_withdrawable", "terminal commands cannot be withdrawn")
+		}
+	}
+	if strings.TrimSpace(withdrawnBy) == "" {
+		return Invalid("invalid_withdrawn_by", "withdrawn_by is required")
+	}
+	if strings.TrimSpace(c.ExecutionToken) == "" {
+		return Conflict("execution_token_unavailable", "approved command must hold an execution token")
+	}
+
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "withdrawn_before_execution"
+	}
+	c.ExecutionToken = ""
+	c.WithdrawnBy = strings.TrimSpace(withdrawnBy)
+	c.TerminalReason = reason
+	c.Status = CommandWithdrawn
+	c.UpdatedAt = now.UTC()
+	c.Version++
 	return nil
 }
 

@@ -34,6 +34,7 @@ type CommandView struct {
 	Interlock        *InterlockDecisionView `json:"interlock,omitempty"`
 	ExecutionToken   string                 `json:"execution_token,omitempty"`
 	ExecutedBy       string                 `json:"executed_by,omitempty"`
+	WithdrawnBy      string                 `json:"withdrawn_by,omitempty"`
 	TerminalReason   string                 `json:"terminal_reason,omitempty"`
 	CreatedAt        string                 `json:"created_at"`
 	UpdatedAt        string                 `json:"updated_at"`
@@ -58,6 +59,11 @@ type ReviewCommandResponse struct {
 }
 
 type ExecuteCommandResponse struct {
+	Command CommandView `json:"command"`
+	Gate    GateView    `json:"gate"`
+}
+
+type WithdrawCommandResponse struct {
 	Command CommandView `json:"command"`
 	Gate    GateView    `json:"gate"`
 }

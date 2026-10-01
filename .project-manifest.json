@@ -124,6 +124,27 @@
         "storage",
         "contracts"
       ]
+    },
+    {
+      "id": "withdraw-gate-command",
+      "name": "Withdraw gate command",
+      "entry": "POST /commands/{id}/withdraw",
+      "steps": [
+        "validate the withdrawal request",
+        "verify the command is approved and has not started moving",
+        "invalidate the execution token, mark the command withdrawn and release the gate reservation atomically"
+      ],
+      "success": "returns a withdrawn command with its original clear interlock still readable, no execution token, and an idle gate without an active command reference",
+      "failure": "returns conflict for pending, executing or terminal commands; on failure the gate stays reserved, the command is unchanged and the existing token remains valid",
+      "verification": "workflowcheck withdraws an approved command, proves the old token is rejected, the gate is released and another command can be reviewed and executed, and covers the pending, malformed, repeated and terminal failure branches",
+      "module_ids": [
+        "entrypoint",
+        "httpapi",
+        "coordination",
+        "domain",
+        "storage",
+        "contracts"
+      ]
     }
   ],
   "complexity": {

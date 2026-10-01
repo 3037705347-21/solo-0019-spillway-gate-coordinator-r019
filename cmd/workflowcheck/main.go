@@ -32,6 +32,8 @@ func main() {
 		err = runReviewSafetyInterlock(client)
 	case "execute-gate-command":
 		err = runExecuteGateCommand(client)
+	case "withdraw-gate-command":
+		err = runWithdrawGateCommand(client)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown workflow: %s\n", *workflow)
 		os.Exit(2)

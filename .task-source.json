@@ -25,7 +25,8 @@
         "起始开度在创建时冻结",
         "待复核命令没有执行令牌",
         "执行令牌在终态后不可复用",
-        "拒绝、完成和中止都是单向终态"
+        "撤回立即清除执行令牌且不可复用",
+        "拒绝、完成、中止和撤回都是单向终态"
       ]
     },
     {
@@ -55,12 +56,14 @@
         "idle->reserved",
         "reserved->moving",
         "moving->idle",
-        "moving->faulted"
+        "moving->faulted",
+        "reserved->idle"
       ],
       "invariants": [
         "reserved 和 moving 必须绑定活动命令",
         "faulted 不参与自动恢复",
-        "settle 后活动命令引用必须清空"
+        "settle 后活动命令引用必须清空",
+        "撤回释放保留时活动命令引用必须清空"
       ]
     },
     {
@@ -71,18 +74,21 @@
         "rejected",
         "executing",
         "completed",
-        "aborted"
+        "aborted",
+        "withdrawn"
       ],
       "transitions": [
         "pending->approved",
         "pending->rejected",
         "approved->executing",
         "executing->completed",
-        "executing->aborted"
+        "executing->aborted",
+        "approved->withdrawn"
       ],
       "invariants": [
         "只有 pending 可以复核",
         "只有 approved 可以执行",
+        "只有 approved 且未开始移动可以撤回",
         "终态不可回退",
         "版本号在每次转换后递增"
       ]
@@ -120,8 +126,10 @@
     },
     {
       "family": "恢复与回滚",
-      "occupied_by": [],
-      "available": true
+      "occupied_by": [
+        "approved_command_withdrawal"
+      ],
+      "available": false
     }
   ],
   "extension_seams": [
@@ -167,6 +175,11 @@
       "workflow_id": "execute-gate-command",
       "description": "执行必须同时校验活动命令、命令状态和一次性令牌；故障路径还要原子地中止命令并把闸门锁存为 faulted",
       "observable_failure": "错误或复用令牌仍改变状态，故障时只更新命令未更新闸门，或只更新闸门未清除活动引用"
+    },
+    {
+      "workflow_id": "withdraw-gate-command",
+      "description": "撤回与执行互斥竞争同一条 approved 命令：要么执行开始移动，要么撤回释放闸门，两者必须在同一把锁下决出唯一赢家；撤回还要立即作废令牌",
+      "observable_failure": "撤回与执行同时成功，撤回后旧令牌仍可执行，或撤回失败却释放闸门/作废令牌导致闸门被失效命令长期占用"
     }
   ]
 }

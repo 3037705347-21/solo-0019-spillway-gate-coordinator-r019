@@ -25,3 +25,8 @@ type ExecuteCommandRequest struct {
 	Token         string `json:"token"`
 	SimulateFault bool   `json:"simulate_fault"`
 }
+
+type WithdrawCommandRequest struct {
+	WithdrawnBy string `json:"withdrawn_by"`
+	Reason      string `json:"reason"`
+}

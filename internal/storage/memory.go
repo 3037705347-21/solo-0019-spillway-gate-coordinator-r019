@@ -166,6 +166,43 @@ func (m *MemoryRepository) ExecuteCommand(
 	return cloneCommand(nextCommand), nextGate, nil
 }
 
+func (m *MemoryRepository) WithdrawCommand(
+	_ context.Context,
+	commandID string,
+	withdrawnBy string,
+	reason string,
+	now time.Time,
+) (domain.GateCommand, domain.Gate, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	command, exists := m.commands[commandID]
+	if !exists {
+		return domain.GateCommand{}, domain.Gate{}, domain.NotFound("command_not_found", "command id was not found")
+	}
+	gate, exists := m.gates[command.GateID]
+	if !exists {
+		return domain.GateCommand{}, domain.Gate{}, domain.NotFound("gate_not_found", "gate id was not found")
+	}
+
+	// Build both next states before writing anything: if either transition is
+	// rejected the repository stays untouched and the gate reservation, the
+	// command and the existing token all remain valid.
+	nextCommand := cloneCommand(command)
+	if err := nextCommand.Withdraw(withdrawnBy, reason, now); err != nil {
+		return domain.GateCommand{}, domain.Gate{}, err
+	}
+
+	nextGate := gate
+	if err := nextGate.ReleaseReservation(nextCommand.ID, now); err != nil {
+		return domain.GateCommand{}, domain.Gate{}, err
+	}
+
+	m.commands[nextCommand.ID] = nextCommand
+	m.gates[nextGate.ID] = nextGate
+	return cloneCommand(nextCommand), nextGate, nil
+}
+
 func cloneCommand(command domain.GateCommand) domain.GateCommand {
 	if command.Interlock == nil {
 		return command

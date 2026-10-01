@@ -34,6 +34,7 @@ func commandView(command domain.GateCommand, includeToken bool) contracts.Comman
 		RequestedBy:      command.RequestedBy,
 		Status:           string(command.Status),
 		ExecutedBy:       command.ExecutedBy,
+		WithdrawnBy:      command.WithdrawnBy,
 		TerminalReason:   command.TerminalReason,
 		CreatedAt:        formatTime(command.CreatedAt),
 		UpdatedAt:        formatTime(command.UpdatedAt),

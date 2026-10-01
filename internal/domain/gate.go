@@ -74,6 +74,27 @@ func (g *Gate) Reserve(commandID string, now time.Time) error {
 	return nil
 }
 
+// ReleaseReservation returns a reserved gate to idle and clears the active
+// command reference. A moving gate cannot be released because the command has
+// already taken effect.
+func (g *Gate) ReleaseReservation(commandID string, now time.Time) error {
+	if g.Status == GateMoving {
+		return Conflict("gate_moving", "a moving gate cannot be released")
+	}
+	if g.Status != GateReserved {
+		return Conflict("gate_not_reserved", "gate must be reserved before it can be released")
+	}
+	if g.ActiveCommandID != commandID {
+		return Conflict("gate_command_mismatch", "gate is reserved by a different command")
+	}
+
+	g.Status = GateIdle
+	g.ActiveCommandID = ""
+	g.UpdatedAt = now.UTC()
+	g.Version++
+	return nil
+}
+
 func (g *Gate) StartMovement(commandID string, now time.Time) error {
 	if g.Status != GateReserved {
 		return Conflict("gate_not_reserved", "gate must be reserved before movement starts")
