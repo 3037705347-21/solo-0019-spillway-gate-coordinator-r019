@@ -34,16 +34,21 @@
 
 闸门操作员通过 `POST /commands/{id}/execute` 提交执行令牌。服务校验命令、令牌、闸门占用关系和目标开度，在临界区内完成 approved、executing、completed 或 aborted 的转换，并同步更新闸门状态。令牌在命令结束后失效，不能复用。
 
+### withdraw-gate-command
+
+安全人员通过 `POST /commands/{id}/withdraw` 撤回仍待执行的命令。只有 approved 且执行令牌尚未使用的命令可以撤回；服务在同一临界区内把命令置为 withdrawn、清空执行令牌并释放闸门占用。已经开始移动、已终态或并发执行中的命令返回冲突，且失败请求不释放闸门、不改动命令、不留下可复用凭据。撤回后读取命令可看到 withdrawn 状态、撤回人和撤回原因，闸门回到 idle 可接受新的复核。
+
 ## 状态与规则
 
 - `gate` 状态：idle、reserved、moving、faulted。
-- `gate_command` 状态：pending、approved、rejected、executing、completed、aborted。
+- `gate_command` 状态：pending、approved、rejected、executing、completed、aborted、withdrawn。
 - 只有 pending 命令可以复核。
 - 只有 approved 命令可以执行，且执行令牌必须匹配。
+- 只有 approved 命令可以撤回，撤回立即作废执行令牌并释放闸门。
 - clear 复核与闸门占用必须同时成功；任一步失败时两者都不写入。
 - blocked 复核使命令 rejected，不会占用闸门。
 - 模拟故障会令命令 aborted、闸门 faulted，并保留最终开度。
-- 已完成或已中止的命令不能再次执行。
+- 已完成、已中止或已撤回的命令不能再次执行或撤回。
 
 ## 模块边界
 
@@ -64,6 +69,7 @@
 - `GET /commands/{id}`
 - `POST /commands/{id}/interlock`
 - `POST /commands/{id}/execute`
+- `POST /commands/{id}/withdraw`
 
 错误响应统一为：
 

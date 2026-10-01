@@ -87,3 +87,17 @@ func (s *Service) ExecuteCommand(
 		s.now(),
 	)
 }
+
+func (s *Service) WithdrawCommand(
+	ctx context.Context,
+	commandID string,
+	request contracts.WithdrawCommandRequest,
+) (domain.GateCommand, domain.Gate, error) {
+	return s.repository.WithdrawCommand(
+		ctx,
+		commandID,
+		request.WithdrawnBy,
+		request.Reason,
+		s.now(),
+	)
+}

@@ -20,6 +20,7 @@ POST /commands
 GET  /commands/{id}
 POST /commands/{id}/interlock
 POST /commands/{id}/execute
+POST /commands/{id}/withdraw
 ```
 
 登记闸门示例：
@@ -64,6 +65,15 @@ POST /commands/{id}/execute
 }
 ```
 
+撤回示例（仅限已复核且尚未开始执行的命令，成功后闸门释放、执行令牌立即失效）：
+
+```json
+{
+  "withdrawn_by": "safety-wu",
+  "reason": "上游水位突变，联锁条件不再满足"
+}
+```
+
 ## 目录
 
 - `cmd/server`：服务进程。
@@ -82,6 +92,7 @@ go run ./cmd/workflowcheck --workflow register-gate
 go run ./cmd/workflowcheck --workflow request-gate-command
 go run ./cmd/workflowcheck --workflow review-safety-interlock
 go run ./cmd/workflowcheck --workflow execute-gate-command
+go run ./cmd/workflowcheck --workflow withdraw-gate-command
 ```
 
 这些检查会创建临时 HTTP 服务并调用真实路由。它们不调用外部网络，也不依赖数据库。

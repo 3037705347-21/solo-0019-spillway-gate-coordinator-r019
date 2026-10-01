@@ -109,3 +109,25 @@ func (h *handler) executeCommand(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 }
+
+func (h *handler) withdrawCommand(w http.ResponseWriter, r *http.Request) {
+	var request contracts.WithdrawCommandRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	command, gate, err := h.service.WithdrawCommand(r.Context(), r.PathValue("id"), request)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(
+		w,
+		http.StatusOK,
+		contracts.WithdrawCommandResponse{
+			Command: commandView(command, false),
+			Gate:    gateView(gate),
+		},
+	)
+}

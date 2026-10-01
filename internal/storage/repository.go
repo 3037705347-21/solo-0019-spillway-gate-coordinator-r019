@@ -27,4 +27,11 @@ type Repository interface {
 		simulateFault bool,
 		now time.Time,
 	) (domain.GateCommand, domain.Gate, error)
+	WithdrawCommand(
+		ctx context.Context,
+		commandID string,
+		withdrawnBy string,
+		reason string,
+		now time.Time,
+	) (domain.GateCommand, domain.Gate, error)
 }

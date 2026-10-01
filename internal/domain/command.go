@@ -14,6 +14,7 @@ const (
 	CommandExecuting CommandStatus = "executing"
 	CommandCompleted CommandStatus = "completed"
 	CommandAborted   CommandStatus = "aborted"
+	CommandWithdrawn CommandStatus = "withdrawn"
 )
 
 type GateCommand struct {
@@ -27,6 +28,7 @@ type GateCommand struct {
 	Interlock        *InterlockDecision
 	ExecutionToken   string
 	ExecutedBy       string
+	WithdrawnBy      string
 	TerminalReason   string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
@@ -125,6 +127,30 @@ func (c *GateCommand) BeginExecution(token, operator string, now time.Time) erro
 
 	c.ExecutedBy = strings.TrimSpace(operator)
 	c.Status = CommandExecuting
+	c.UpdatedAt = now.UTC()
+	c.Version++
+	return nil
+}
+
+func (c *GateCommand) Withdraw(withdrawnBy, reason string, now time.Time) error {
+	if c.Status != CommandApproved {
+		return Conflict("command_not_withdrawable", "only approved commands that have not started execution can be withdrawn")
+	}
+
+	withdrawnBy = strings.TrimSpace(withdrawnBy)
+	if withdrawnBy == "" {
+		return Invalid("invalid_withdrawn_by", "withdrawn_by is required")
+	}
+
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return Invalid("invalid_withdrawal_reason", "withdrawal reason is required")
+	}
+
+	c.ExecutionToken = ""
+	c.WithdrawnBy = withdrawnBy
+	c.TerminalReason = reason
+	c.Status = CommandWithdrawn
 	c.UpdatedAt = now.UTC()
 	c.Version++
 	return nil

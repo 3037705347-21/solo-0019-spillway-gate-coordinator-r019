@@ -74,6 +74,21 @@ func (g *Gate) Reserve(commandID string, now time.Time) error {
 	return nil
 }
 
+func (g *Gate) Release(commandID string, now time.Time) error {
+	if g.Status != GateReserved {
+		return Conflict("gate_not_reserved", "gate must be reserved before it can be released")
+	}
+	if g.ActiveCommandID != commandID {
+		return Conflict("gate_command_mismatch", "gate is reserved by a different command")
+	}
+
+	g.Status = GateIdle
+	g.ActiveCommandID = ""
+	g.UpdatedAt = now.UTC()
+	g.Version++
+	return nil
+}
+
 func (g *Gate) StartMovement(commandID string, now time.Time) error {
 	if g.Status != GateReserved {
 		return Conflict("gate_not_reserved", "gate must be reserved before movement starts")
